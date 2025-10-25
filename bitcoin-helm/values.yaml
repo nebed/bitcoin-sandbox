@@ -5,10 +5,10 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/nebed/bitcoin-sandbox
+  repository: ghcr.io/nebed/bitcoin-sandbox/bitcoin-sandbox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "master"
 
 imagePullSecrets: []
 nameOverride: ""
