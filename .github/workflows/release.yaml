@@ -6,6 +6,10 @@ on:
   release:
     types: [created]
 
+concurrency:
+  group: bitcoin-docker-build
+  cancel-in-progress: true 
+
 jobs:
   docker:
     runs-on: ubuntu-latest
