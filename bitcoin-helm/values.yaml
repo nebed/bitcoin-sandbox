@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/nebed/bitcoin-sandbox/bitcoin-sandbox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.0.0"
+  tag: "v1.0.0"
 
 imagePullSecrets: []
 nameOverride: ""
