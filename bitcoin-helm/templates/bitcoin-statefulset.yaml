@@ -62,14 +62,16 @@ spec:
           livenessProbe:
             exec:
               command:
-                - bitcoin-cli -conf=/bitcoin/data/bitcoin.conf
+                - bitcoin-cli
+                - -conf=/bitcoin/data/bitcoin.conf
                 - getblockchaininfo
             initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
             exec:
               command:
-                - bitcoin-cli -conf=/bitcoin/data/bitcoin.conf
+                - bitcoin-cli
+                - -conf=/bitcoin/data/bitcoin.conf
                 - getnetworkinfo
             initialDelaySeconds: 30
             periodSeconds: 15
