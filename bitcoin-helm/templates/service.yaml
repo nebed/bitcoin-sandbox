@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bitcoin-helm.fullname" . }}
+  labels:
+    {{- include "bitcoin-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 8333
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+    - port: 8332
+      targetPort: rpc
+      protocol: TCP
+      name: rpc
+  selector:
+    {{- include "bitcoin-helm.selectorLabels" . | nindent 4 }}

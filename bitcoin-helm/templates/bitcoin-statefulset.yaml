@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "bitcoin-helm.fullname" . }}
+  labels:
+    {{- include "bitcoin-helm.labels" . | nindent 4 }}
+spec:
+  serviceName: bitcoin
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bitcoin-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bitcoin-helm.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bitcoin-helm.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: bitcoind
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: p2p
+              containerPort: 8333
+            - name: rpc
+              containerPort: 8332
+          args:
+            # Default arguments; can be overridden
+            - "-conf=/bitcoin/data/bitcoin.conf"
+            - "-datadir=/bitcoin/data"
+          volumeMounts:
+            # Persistent blockchain data (per pod)
+            - name: bitcoin-data
+              mountPath: /bitcoin/data
+            # ConfigMap with bitcoin.conf
+            - name: bitcoin-conf
+              mountPath: /bitcoin/data/bitcoin.conf
+              subPath: bitcoin.conf
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          livenessProbe:
+            exec:
+              command:
+                - bitcoin-cli
+                - getblockchaininfo
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                - bitcoin-cli
+                - getnetworkinfo
+            initialDelaySeconds: 30
+            periodSeconds: 15
+        volumes:
+          - name: bitcoin-conf
+            secret:
+              secretName: bitcoin-conf
+  volumeClaimTemplates:
+    - metadata:
+        name: bitcoin-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1000Gi
+        storageClassName: standard
