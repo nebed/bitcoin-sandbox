@@ -73,10 +73,10 @@ spec:
                 - getnetworkinfo
             initialDelaySeconds: 30
             periodSeconds: 15
-        volumes:
-          - name: bitcoin-conf
-            secret:
-              secretName: bitcoin-conf
+      volumes:
+        - name: bitcoin-conf
+          secret:
+            secretName: bitcoin-conf
   volumeClaimTemplates:
     - metadata:
         name: bitcoin-data
