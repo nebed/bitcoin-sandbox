@@ -54,11 +54,11 @@ spec:
               subPath: bitcoin.conf
           resources:
             requests:
-              cpu: "300m"
-              memory: "0.6Gi"
+              cpu: "3"
+              memory: "15Gi"
             limits:
-              cpu: "1"
-              memory: "2Gi"
+              cpu: "3"
+              memory: "13Gi"
           livenessProbe:
             exec:
               command:
