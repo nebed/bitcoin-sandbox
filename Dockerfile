@@ -38,7 +38,7 @@ RUN git clone --branch ${BITCOIN_VERSION} --depth 1 https://github.com/bitcoin/b
 WORKDIR /usr/src/bitcoin
 
 # Prepare build system (for autoconf/automake)
-RUN cmake -B build -DENABLE_WALLET=ON -DBUILD_GUI=OFF -DCMAKE_INSTALL_PREFIX=/usr/local-staging
+RUN cmake -B build -DENABLE_WALLET=ON DWITH_ZMQ=ON -DBUILD_GUI=OFF -DCMAKE_INSTALL_PREFIX=/usr/local-staging
 
 RUN cmake --build build -j"$(nproc)" && \
     cmake --install build --prefix /usr/local-staging
