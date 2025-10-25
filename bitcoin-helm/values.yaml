@@ -5,14 +5,14 @@
 replicaCount: 1
 
 image:
-  repository: nginx
+  repository: ghcr.io/nebed/bitcoin-sandbox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "bitcoind"
 
 serviceAccount:
   # Specifies whether a service account should be created

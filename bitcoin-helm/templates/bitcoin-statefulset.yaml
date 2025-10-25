@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "bitcoin-helm.labels" . | nindent 4 }}
 spec:
-  serviceName: bitcoin
+  serviceName: {{ include "bitcoin-helm.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
