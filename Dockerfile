@@ -46,6 +46,19 @@ RUN cmake --build build -j"$(nproc)" && \
 # Now build a smaller runtime image
 FROM alpine:latest
 
+RUN apk add --no-cache \
+    libstdc++ \
+    libgcc \
+    libevent \
+    sqlite \
+    boost \
+    zeromq \
+    openssl \
+    capnproto \
+    zlib \
+    bash \
+    tini
+
 # Create a bitcoin user and data directory
 RUN addgroup -S bitcoin && adduser -S -G bitcoin bitcoin \
     && mkdir -p /bitcoin/data \
