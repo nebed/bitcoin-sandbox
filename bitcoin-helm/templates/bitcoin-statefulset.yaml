@@ -66,22 +66,22 @@ spec:
                   - "/bin/sh"
                   - "-c"
                   - "bitcoin-cli -conf=/bitcoin/data/bitcoin.conf stop && sleep 30"
-          livenessProbe:
-            exec:
-              command:
-                - bitcoin-cli
-                - -conf=/bitcoin/data/bitcoin.conf
-                - getblockchaininfo
-            initialDelaySeconds: 60
-            periodSeconds: 30
-          readinessProbe:
-            exec:
-              command:
-                - bitcoin-cli
-                - -conf=/bitcoin/data/bitcoin.conf
-                - getblockchaininfo
-            initialDelaySeconds: 30
-            periodSeconds: 30
+        #   livenessProbe:
+        #     exec:
+        #       command:
+        #         - bitcoin-cli
+        #         - -conf=/bitcoin/data/bitcoin.conf
+        #         - getblockchaininfo
+        #     initialDelaySeconds: 60
+        #     periodSeconds: 30
+        #   readinessProbe:
+        #     exec:
+        #       command:
+        #         - bitcoin-cli
+        #         - -conf=/bitcoin/data/bitcoin.conf
+        #         - getblockchaininfo
+        #     initialDelaySeconds: 30
+        #     periodSeconds: 30
       volumes:
         - name: bitcoin-conf
           secret:
