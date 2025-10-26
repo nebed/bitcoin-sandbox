@@ -61,13 +61,13 @@ spec:
               memory: "15Gi"
           livenessProbe:
             httpGet:
-              path: /v2/info
+              path: /rest/chaininfo.json
               port: rpc
             initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /v2/info
+              path: /rest/chaininfo.json
               port: rpc
             initialDelaySeconds: 30
             periodSeconds: 15
