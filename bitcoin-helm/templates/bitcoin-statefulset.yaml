@@ -60,19 +60,15 @@ spec:
               cpu: "3"
               memory: "15Gi"
           livenessProbe:
-            exec:
-              command:
-                - bitcoin-cli
-                - -conf=/bitcoin/data/bitcoin.conf
-                - getblockchaininfo
+            httpGet:
+              path: /v2/info
+              port: rpc
             initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
-            exec:
-              command:
-                - bitcoin-cli
-                - -conf=/bitcoin/data/bitcoin.conf
-                - getnetworkinfo
+            httpGet:
+              path: /v2/info
+              port: rpc
             initialDelaySeconds: 30
             periodSeconds: 15
       volumes:
