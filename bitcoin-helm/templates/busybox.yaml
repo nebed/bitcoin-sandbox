@@ -27,16 +27,24 @@ spec:
             - |
               set -euo pipefail
 
-              echo "Updating apt and installing required tools..."
+              echo "Updating apt and installing build tools..."
               apt-get update -y >/dev/null
-              DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar lz4 build-essential >/dev/null
+              DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar build-essential >/dev/null
+
+              echo "Downloading and compiling multi-threaded LZ4..."
+              wget -q https://github.com/lz4/lz4/archive/refs/tags/v1.10.0.tar.gz -O /tmp/lz4.tar.gz
+              tar -xf /tmp/lz4.tar.gz -C /tmp
+              cd /tmp/lz4-1.10.0
+              make -j3 >/dev/null
+              cp lz4 /usr/local/bin/
+              cd /
 
               echo "Clearing /bitcoin/data directory..."
               rm -rf /bitcoin/data/*
 
-              echo "Starting parallel downloads and multi-threaded extraction..."
+              echo "Starting parallel streaming download, decompression, and extraction..."
 
-              # Stream bitcoin-base in background
+              # Thread 1: bitcoin-base
               (
                 echo "[Thread 1] Downloading and extracting bitcoin-base.tar.lz4..."
                 wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
@@ -45,7 +53,7 @@ spec:
                 echo "[Thread 1] Done."
               ) &
 
-              # Stream bitcoin-part in background
+              # Thread 2: bitcoin-part
               (
                 echo "[Thread 2] Downloading and extracting bitcoin-part-921638.tar.lz4..."
                 wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
@@ -57,10 +65,10 @@ spec:
               # Wait for both to finish
               wait
 
-              echo "Fixing permissions to UID:GID 1000:1000..."
+              echo "Fixing ownership to UID:GID 1000:1000..."
               chown -R 1000:1000 /bitcoin/data
 
-              echo "✅ All snapshots downloaded and extracted in parallel!"
+              echo "✅ Parallel multi-threaded snapshot extraction complete!"
           resources:
             requests:
               cpu: "3"
