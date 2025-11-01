@@ -19,44 +19,37 @@ spec:
         fsGroup: 0
       containers:
         - name: snapshot-loader
-          image: ghcr.io/charlieegan3/lz4-mt:latest
+          image: ubuntu:22.04
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
             - -c
             - |
               set -euo pipefail
-
-              echo "Clearing /bitcoin/data directory..."
+              echo "Updating apt and installing build tools..."
+              apt-get update -y >/dev/null
+              DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar build-essential lz4 >/dev/null
+              echo "Building lz4 with pthread support..."
+              # Example: build from source
+              wget -q https://github.com/lz4/lz4/archive/refs/tags/v1.10.0.tar.gz -O /tmp/lz4.tar.gz
+              tar -xf /tmp/lz4.tar.gz -C /tmp
+              cd /tmp/lz4-1.10.0
+              make -j3
+              cp lz4 /usr/local/bin/
+              cd /
+              echo "Clearing /bitcoin/data..."
               rm -rf /bitcoin/data/*
-
-              echo "Starting parallel streaming download, decompression, and extraction..."
-
-              # Thread 1: bitcoin-base
-              (
-                echo "[Thread 1] Downloading and extracting bitcoin-base.tar.lz4..."
-                wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
-                  | lz4mt -p3 -d \
-                  | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="[Thread 1] Extracted 5000 files"
-                echo "[Thread 1] Done."
-              ) &
-
-              # Thread 2: bitcoin-part
-              (
-                echo "[Thread 2] Downloading and extracting bitcoin-part-921638.tar.lz4..."
-                wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
-                  | lz4mt -p3 -d \
-                  | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="[Thread 2] Extracted 5000 files"
-                echo "[Thread 2] Done."
-              ) &
-
-              # Wait for both streams to finish
-              wait
-
-              echo "Fixing permissions to UID:GID 1000:1000..."
+              echo "Streaming download + multithread decompress + extract..."
+              # Use -j3 (3 threads) if lz4 supports pthreads
+              wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
+                | lz4 -d --threads=3 \
+                | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="Extracted 5000 files"
+              wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
+                | lz4 -d --threads=3 \
+                | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="Extracted 5000 files"
+              echo "Fixing permissions..."
               chown -R 1000:1000 /bitcoin/data
-
-              echo "✅ Fully parallel snapshot download and extraction complete!"
+              echo "✅ Done."
           resources:
             requests:
               cpu: "3"
