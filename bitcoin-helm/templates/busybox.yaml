@@ -6,21 +6,20 @@ metadata:
     app: bitcoin-snapshot-loader
 spec:
   backoffLimit: 1
-  ttlSecondsAfterFinished: 3600  # Job auto-deletes after 1 hour
+  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       labels:
         app: bitcoin-snapshot-loader
     spec:
       restartPolicy: Never
-      # Run as root to install required tools
       securityContext:
         runAsUser: 0
         runAsGroup: 0
         fsGroup: 0
       containers:
         - name: snapshot-loader
-          image: ubuntu:22.04
+          image: ghcr.io/charlieegan3/lz4-mt:latest
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
@@ -28,29 +27,43 @@ spec:
             - |
               set -euo pipefail
 
-              echo "Installing required tools (wget, tar, lz4)..."
-              apt-get update -y >/dev/null
-              DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar lz4 >/dev/null
-
               echo "Clearing /bitcoin/data directory..."
               rm -rf /bitcoin/data/*
 
-              echo "Starting streamed extraction of bitcoin-base.tar.lz4..."
-              wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
-                | lz4 -d | tar -x -C /bitcoin/data/ --checkpoint=.1000 --checkpoint-action=echo="Extracted 1000 files"
+              echo "Starting parallel streaming download, decompression, and extraction..."
 
-              echo "Base snapshot extraction completed."
+              # Thread 1: bitcoin-base
+              (
+                echo "[Thread 1] Downloading and extracting bitcoin-base.tar.lz4..."
+                wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
+                  | lz4mt -p3 -d \
+                  | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="[Thread 1] Extracted 5000 files"
+                echo "[Thread 1] Done."
+              ) &
 
-              echo "Starting streamed extraction of bitcoin-part-921638.tar.lz4..."
-              wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
-                | lz4 -d | tar -x -C /bitcoin/data/ --checkpoint=.1000 --checkpoint-action=echo="Extracted 1000 files"
+              # Thread 2: bitcoin-part
+              (
+                echo "[Thread 2] Downloading and extracting bitcoin-part-921638.tar.lz4..."
+                wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
+                  | lz4mt -p3 -d \
+                  | tar -x -C /bitcoin/data/ --checkpoint=.5000 --checkpoint-action=echo="[Thread 2] Extracted 5000 files"
+                echo "[Thread 2] Done."
+              ) &
 
-              echo "Part snapshot extraction completed."
+              # Wait for both streams to finish
+              wait
 
               echo "Fixing permissions to UID:GID 1000:1000..."
               chown -R 1000:1000 /bitcoin/data
 
-              echo "✅ Bitcoin snapshot extraction complete!"
+              echo "✅ Fully parallel snapshot download and extraction complete!"
+          resources:
+            requests:
+              cpu: "3"
+              memory: "8Gi"
+            limits:
+              cpu: "3"
+              memory: "8Gi"
           volumeMounts:
             - name: bitcoin-data
               mountPath: /bitcoin/data
