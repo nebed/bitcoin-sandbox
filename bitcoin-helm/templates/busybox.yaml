@@ -18,17 +18,20 @@ spec:
         fsGroup: 1000
       containers:
         - name: snapshot-loader
-          image: ubuntu:22.04
+          image: bitnami/minideb:bookworm
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
             - -c
             - |
               set -euo pipefail
-
-              echo "Updating package lists and installing tools..."
-              apt-get update -y >/dev/null
-              DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar lz4 >/dev/null
+              
+              echo "Checking for required tools..."
+              if ! command -v wget >/dev/null; then
+                echo "Installing wget, tar, and lz4..."
+                apt-get update -o APT::Sandbox::User=root -y >/dev/null
+                apt-get install -o APT::Sandbox::User=root -y wget tar lz4 >/dev/null
+              fi
 
               echo "Clearing /bitcoin/data directory..."
               rm -rf /bitcoin/data/*
@@ -45,7 +48,7 @@ spec:
               echo "Extracting bitcoin-part-921638.tar.lz4..."
               lz4 -d /bitcoin/data/bitcoin-part-921638.tar.lz4 | tar -x -C /bitcoin/data/
 
-              echo "Cleaning up downloaded archives..."
+              echo "Cleaning up..."
               rm -f /bitcoin/data/*.lz4
 
               echo "✅ Snapshot extraction complete!"
