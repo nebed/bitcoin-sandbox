@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bitcoin-snapshot-loader
+  labels:
+    app: bitcoin-snapshot-loader
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: bitcoin-snapshot-loader
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: busybox
+          image: busybox:1.36.1-glibc
+          # BusyBox image with wget and tar, but we’ll install lz4 dynamically
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -ex
+              echo "Installing lz4..."
+              wget -qO /tmp/lz4.tar.gz https://github.com/lz4/lz4/archive/refs/tags/v1.9.4.tar.gz
+              tar -xzf /tmp/lz4.tar.gz -C /tmp
+              cd /tmp/lz4-1.9.4
+              make lz4
+              cp lz4 /usr/local/bin/lz4
+
+              echo "Clearing /bitcoin/data directory..."
+              rm -rf /bitcoin/data/*
+
+              echo "Downloading Bitcoin base snapshot..."
+              wget -O /bitcoin/data/bitcoin-base.tar.lz4 https://snapshots.publicnode.com/bitcoin-base.tar.lz4 --progress=bar:force
+
+              echo "Downloading Bitcoin part snapshot..."
+              wget -O /bitcoin/data/bitcoin-part-921638.tar.lz4 https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 --progress=bar:force
+
+              echo "Extracting bitcoin-base.tar.lz4..."
+              lz4 -d /bitcoin/data/bitcoin-base.tar.lz4 | tar -x -C /bitcoin/data/
+
+              echo "Extracting bitcoin-part-921638.tar.lz4..."
+              lz4 -d /bitcoin/data/bitcoin-part-921638.tar.lz4 | tar -x -C /bitcoin/data/
+
+              echo "Snapshot extraction complete!"
+          volumeMounts:
+            - name: bitcoin-data
+              mountPath: /bitcoin/data
+      volumes:
+        - name: bitcoin-data
+          persistentVolumeClaim:
+            claimName: bitcoin-data-bitcoind-0
