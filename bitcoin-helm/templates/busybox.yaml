@@ -6,13 +6,14 @@ metadata:
     app: bitcoin-snapshot-loader
 spec:
   backoffLimit: 1
+  ttlSecondsAfterFinished: 3600  # Job auto-deletes after 1 hour
   template:
     metadata:
       labels:
         app: bitcoin-snapshot-loader
     spec:
       restartPolicy: Never
-      # Run as root to install tools and fix permissions
+      # Run as root to install required tools
       securityContext:
         runAsUser: 0
         runAsGroup: 0
@@ -27,32 +28,29 @@ spec:
             - |
               set -euo pipefail
 
-              echo "Updating package lists and installing required tools..."
+              echo "Installing required tools (wget, tar, lz4)..."
               apt-get update -y >/dev/null
               DEBIAN_FRONTEND=noninteractive apt-get install -y wget tar lz4 >/dev/null
 
-              echo "Clearing existing data directory..."
+              echo "Clearing /bitcoin/data directory..."
               rm -rf /bitcoin/data/*
 
-              echo "Downloading Bitcoin base snapshot..."
-              wget -O /bitcoin/data/bitcoin-base.tar.lz4 https://snapshots.publicnode.com/bitcoin-base.tar.lz4 --progress=bar:force:noscroll
+              echo "Starting streamed extraction of bitcoin-base.tar.lz4..."
+              wget -qO- https://snapshots.publicnode.com/bitcoin-base.tar.lz4 \
+                | lz4 -d | tar -x -C /bitcoin/data/ --checkpoint=.1000 --checkpoint-action=echo="Extracted 1000 files"
 
-              echo "Downloading Bitcoin part snapshot..."
-              wget -O /bitcoin/data/bitcoin-part-921638.tar.lz4 https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 --progress=bar:force:noscroll
+              echo "Base snapshot extraction completed."
 
-              echo "Extracting bitcoin-base.tar.lz4..."
-              lz4 -d /bitcoin/data/bitcoin-base.tar.lz4 | tar -x -C /bitcoin/data/
+              echo "Starting streamed extraction of bitcoin-part-921638.tar.lz4..."
+              wget -qO- https://snapshots.publicnode.com/bitcoin-part-921638.tar.lz4 \
+                | lz4 -d | tar -x -C /bitcoin/data/ --checkpoint=.1000 --checkpoint-action=echo="Extracted 1000 files"
 
-              echo "Extracting bitcoin-part-921638.tar.lz4..."
-              lz4 -d /bitcoin/data/bitcoin-part-921638.tar.lz4 | tar -x -C /bitcoin/data/
+              echo "Part snapshot extraction completed."
 
-              echo "Removing archive files..."
-              rm -f /bitcoin/data/*.lz4
-
-              echo "Fixing directory ownership to UID 1000 and GID 1000..."
+              echo "Fixing permissions to UID:GID 1000:1000..."
               chown -R 1000:1000 /bitcoin/data
 
-              echo "✅ Snapshot extraction complete!"
+              echo "✅ Bitcoin snapshot extraction complete!"
           volumeMounts:
             - name: bitcoin-data
               mountPath: /bitcoin/data
